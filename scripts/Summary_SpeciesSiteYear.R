@@ -77,7 +77,7 @@ dat_consec <- dat_cull %>%
   mutate(site.trt = paste(site_code, "_", trt, sep="")) %>% 
   select(-c(site_code,trt)) %>% 
   pivot_wider(names_from=site.trt, values_from=max_consec) %>% 
-  mutate(n_sitetrt = rowSums(!is.na(across(-Taxon)))) # number of sites per species
+  mutate(n_sitetrt = rowSums(!is.na(across(-Taxon)))) # number of site x treatment combos per species
 
 summary(dat_consec$n_sitetrt)  
   
