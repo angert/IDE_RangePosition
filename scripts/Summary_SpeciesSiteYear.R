@@ -73,11 +73,24 @@ dat_consec <- dat_cull %>%
   filter(diff<2) %>% # get rid of observations across non-consecutive years
   mutate(consec = cumsum(diff)) %>% 
   summarise(max_consec = max(consec)) %>% 
-  ungroup() %>% 
-  mutate(site.trt = paste(site_code, "_", trt, sep="")) %>% 
-  select(-c(site_code,trt)) %>% 
-  pivot_wider(names_from=site.trt, values_from=max_consec) %>% 
-  mutate(n_sitetrt = rowSums(!is.na(across(-Taxon)))) # number of site x treatment combos per species
+  ungroup()  #2430 rows
 
-summary(dat_consec$n_sitetrt)  
+dat_consec_cull <- dat_consec %>% 
+  filter(max_consec>0) %>%  # get rid of rows where either treatment has 0 consecutive years (1745 rows remaining)
+  group_by(Taxon, site_code) %>% 
+  summarise(paired = length(max_consec)) %>% 
+  filter(paired>1)  %>% droplevels() # get rid of sites that no longer have matched droughts and controls
+  # 731 rows
+  
+dat_consec_cull <- left_join(dat_consec, dat_consec_cull) %>% 
+  filter(paired==2) %>% #1462 rows (= 731 sites x 2 treatment levels)
+  mutate(site.trt = paste(site_code, "_", trt, sep="")) %>% 
+  select(-c(site_code, trt, paired)) %>% 
+  pivot_wider(names_from=site.trt, values_from=max_consec) %>% 
+  mutate(n_sitetrt = rowSums(!is.na(across(-Taxon)))) %>% # number of site x treatment combos per species
+  filter(n_sitetrt > 2) # get rid of species that have only 1 site remaining --> 199 species remaining
+
+summary(dat_consec_cull$n_sitetrt)  
+
+write_csv(dat_consec_cull, "data/species_site_consecyears.csv")
   
