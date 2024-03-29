@@ -92,5 +92,9 @@ dat_consec_cull <- left_join(dat_consec, dat_consec_cull) %>%
 
 summary(dat_consec_cull$n_sitetrt)  
 
+# Remove two unidentified species (Carex sp. and Cyperus sp.)
+dat_consec_cull <- dat_consec_cull %>% 
+  filter(!grepl(".*\\.", Taxon)) # 197 species remaining 
+
 write_csv(dat_consec_cull, "data/species_site_consecyears.csv")
   
