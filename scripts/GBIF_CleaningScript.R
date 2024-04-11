@@ -90,8 +90,9 @@ destination_folder <- file.path("data", "cleaned_occurrence")
 if (!file.exists(destination_folder)) {
   dir.create(destination_folder, recursive = TRUE)
 }
-write.csv(species_data_clean, file = file.path(destination_folder, "ARISTIDA_PURPUREA.csv"), row.names = FALSE)
-
+filename <- gsub(" ", "_", species_name)
+output_file <- file.path(destination_folder, paste0(file_name, ".csv"))
+write.csv(species_data_clean, file = output_file, row.names = FALSE)
 
 # update summary csv
 summary <- read.csv("data/cleaned_occurrence/summary.csv")
