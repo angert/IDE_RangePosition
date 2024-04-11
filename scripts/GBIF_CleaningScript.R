@@ -23,8 +23,7 @@ for (i in 1:length(packages_needed)){
 
 
 # obtain species record from gbif 
-species_name <- "ARTEMISIA LUDOVICIANA	" # TODO
-species_name <- gsub("[[:cntrl:]]", "", species_name)
+species_name <- "BOUTELOUA GRACILIS" # TODO
 species_search <- occ_data(scientificName = species_name, 
                            country = "US",
                            hasCoordinate = TRUE, 
