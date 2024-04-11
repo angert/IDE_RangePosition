@@ -23,7 +23,8 @@ for (i in 1:length(packages_needed)){
 
 
 # obtain species record from gbif 
-species_name <- "ARISTIDA PURPUREA" # TODO
+species_name <- "ARTEMISIA LUDOVICIANA	" # TODO
+species_name <- gsub("[[:cntrl:]]", "", species_name)
 species_search <- occ_data(scientificName = species_name, 
                            country = "US",
                            hasCoordinate = TRUE, 
@@ -91,7 +92,7 @@ if (!file.exists(destination_folder)) {
   dir.create(destination_folder, recursive = TRUE)
 }
 filename <- gsub(" ", "_", species_name)
-output_file <- file.path(destination_folder, paste0(file_name, ".csv"))
+output_file <- file.path(destination_folder, paste0(filename, ".csv"))
 write.csv(species_data_clean, file = output_file, row.names = FALSE)
 
 # update summary csv
