@@ -3,18 +3,24 @@
 #### AUTHOR: Ryan Ng
 #### DATE LAST MODIFIED: 20240411
 
+# setwd() as IDE_RangePosition
+
+
 # make vector of packages needed
 packages_needed <- c("rgbif", "dplyr", "CoordinateCleaner")
+
 
 # install packages needed (if not already installed)
 for (i in 1:length(packages_needed)){
   if(!(packages_needed[i] %in% installed.packages())){install.packages(packages_needed[i])}
 }
 
+
 # load packages needed
 for (i in 1:length(packages_needed)){
   library( packages_needed[i], character.only = TRUE)
 }
+
 
 # obtain species record from gbif 
 species_name <- "ARISTIDA PURPUREA" # TODO
@@ -26,6 +32,7 @@ species_search <- occ_data(scientificName = species_name,
                            coordinateUncertaintyInMeters = "0,1000",
                            limit = 99999) 
 
+
 # remove rows with occurrence issues 
 # reference: https://gbif.github.io/gbif-api/apidocs/org/gbif/api/vocabulary/OccurrenceIssue.html
 species_issues_clean <- species_search %>%
@@ -35,6 +42,7 @@ species_issues_clean <- species_search %>%
              -mdatunl, -osifbor, -osu, -preneglat, -preneglon, 
              -preswcd, -rdativ, -rdatm, -rdatunl, -typstativ, 
              -zerocd)
+
 
 # select relevant columns 
 species_data <- species_issues_clean$data[ , c("species", "decimalLongitude", 
@@ -47,6 +55,7 @@ species_data <- species_issues_clean$data[ , c("species", "decimalLongitude",
                                                "year", "month", "day", 
                                                "eventDate", "geodeticDatum", 
                                                "datasetName", "catalogNumber")]
+
 
 # remove invalid rows 
 species_data <- species_data%>%
@@ -74,10 +83,18 @@ species_data_clean <- species_data%>%
   cc_outl()%>% # outliers (slow)
   cc_dupl() # duplicate species
 
+
 # save into data/cleaned_occurrence folder
-nrow(species_data_clean) 
+n <- nrow(species_data_clean) 
 destination_folder <- file.path("data", "cleaned_occurrence")
 if (!file.exists(destination_folder)) {
   dir.create(destination_folder, recursive = TRUE)
 }
 write.csv(species_data_clean, file = file.path(destination_folder, "ARISTIDA_PURPUREA.csv"), row.names = FALSE)
+
+
+# update summary csv
+summary <- read.csv("data/cleaned_occurrence/summary.csv")
+summary$Final_Occ[summary$Taxon == species_name] <- n
+summary$Completed[summary$Taxon == species_name] <- "Y"
+write.csv(summary, file = file.path(destination_folder, "summary.csv"), row.names = FALSE)
