@@ -5,10 +5,8 @@
 
 # setwd() as IDE_RangePosition
 
-
 # make vector of packages needed
-packages_needed <- c("rgbif", "dplyr", "CoordinateCleaner")
-
+packages_needed <- c("rgbif", "dplyr", "CoordinateCleaner", "sp", "raster")
 
 # install packages needed (if not already installed)
 for (i in 1:length(packages_needed)){
@@ -23,7 +21,7 @@ for (i in 1:length(packages_needed)){
 
 
 # obtain species record from gbif 
-species_name <- "BOUTELOUA GRACILIS" # TODO
+species_name <- "CHAMAECRISTA FASCICULATA" # TODO
 species_search <- occ_data(scientificName = species_name, 
                            country = "US;CA;MX",
                            hasCoordinate = TRUE, 
@@ -107,3 +105,16 @@ summary <- read.csv("data/cleaned_occurrence/summary.csv")
 summary$Final_Occ[summary$Taxon == species_name] <- n
 summary$Completed[summary$Taxon == species_name] <- "Y"
 write.csv(summary, file = file.path(destination_folder, "summary.csv"), row.names = FALSE)
+
+# create shapefile 
+species_data_lonlat <- species_data_clean[ , c("decimalLongitude", "decimalLatitude")]
+ch <- chull(species_data_lonlat)  
+coords <- species_data_lonlat[c(ch, ch[1]), ] 
+sp_poly <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID=1)), proj4string=CRS("+proj=longlat +datum=WGS84"))
+sp_poly_df <- SpatialPolygonsDataFrame(sp_poly, data=data.frame(ID=1))
+destination_folder2 <- file.path("data", "shapefiles")
+if (!file.exists(destination_folder2)) {
+  dir.create(destination_folder2, recursive = TRUE)
+}
+output_file2 <- file.path(destination_folder2, paste0(filename, ".shp"))
+shapefile(x = sp_poly_df, file = output_file2)
