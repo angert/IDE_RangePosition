@@ -25,17 +25,16 @@ for (i in 1:length(packages_needed)){
 # obtain species record from gbif 
 species_name <- "BOUTELOUA GRACILIS" # TODO
 species_search <- occ_data(scientificName = species_name, 
-                           country = "US",
+                           country = "US;CA;MX",
                            hasCoordinate = TRUE, 
                            year = "1970,2000",
                            hasGeospatialIssue = FALSE,
                            coordinateUncertaintyInMeters = "0,1000",
                            limit = 99999) 
 
-
 # remove rows with occurrence issues 
 # reference: https://gbif.github.io/gbif-api/apidocs/org/gbif/api/vocabulary/OccurrenceIssue.html
-species_issues_clean <- species_search %>%
+species_search <- species_search %>%
   occ_issues(-bri, -ccm, -cdiv, -cdout, -cdpi, -cdrepf, -cdreps,
              -cdumi, -conti, -cucdmis, -cum, -gdativ, -geodi, 
              -geodu, -iccos, -iddativ, -iddatunl, -indci, -mdativ, 
@@ -43,9 +42,18 @@ species_issues_clean <- species_search %>%
              -preswcd, -rdativ, -rdatm, -rdatunl, -typstativ, 
              -zerocd)
 
+# remove potential occurrences from Hawaii 
+hawaii_min_lat <- 18
+hawaii_max_lat <- 23
+hawaii_min_lon <- -161
+hawaii_max_lon <- -154
+species_search <- subset(species_search$data, !(decimalLatitude >= hawaii_min_lat & 
+                           decimalLatitude <= hawaii_max_lat &
+                           decimalLongitude >= hawaii_min_lon &
+                           decimalLongitude <= hawaii_max_lon))
 
 # select relevant columns 
-species_data <- species_issues_clean$data[ , c("species", "decimalLongitude", 
+species_data <- species_search[ , c("species", "decimalLongitude", 
                                                "decimalLatitude", "issues",
                                                "countryCode", "individualCount", 
                                                "occurrenceStatus", 
