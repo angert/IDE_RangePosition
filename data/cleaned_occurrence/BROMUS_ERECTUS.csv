@@ -1,0 +1,7 @@
+"species","decimalLongitude","decimalLatitude","issues","countryCode","occurrenceStatus","coordinateUncertaintyInMeters","institutionCode","gbifID","references","basisOfRecord","year","month","day","eventDate","geodeticDatum","datasetName","catalogNumber"
+"Bromus erectus",-77.31183,44.14626,"cdc","CA","PRESENT",100,"iNaturalist","4507590545","https://www.inaturalist.org/observations/95955180","HUMAN_OBSERVATION",1996,6,17,"1996-06-17T10:06","WGS84","iNaturalist research-grade observations","95955180"
+"Bromus erectus",-77.761374,38.847528,"cdc,inmafu","US","PRESENT",400,"USCH","3121086670","https://sernecportal.org/portal/collections/individual/index.php?occid=26929511","PRESERVED_SPECIMEN",1992,7,8,"1992-07-08","WGS84",NA,"USCH0066176"
+"Bromus erectus",-81.715925,43.167923,"cdc","CA","PRESENT",48,"iNaturalist","4507783560","https://www.inaturalist.org/observations/102820661","HUMAN_OBSERVATION",1990,8,15,"1990-08-15","WGS84","iNaturalist research-grade observations","102820661"
+"Bromus erectus",-83.53005,45.30002,"","US","PRESENT",969,"MICH","1988718642",NA,"PRESERVED_SPECIMEN",1989,6,11,"1989-06-11","WGS84",NA,"1309572"
+"Bromus erectus",-83.42348,45.17034,"gass84","US","PRESENT",969,"MICH","1989313790",NA,"PRESERVED_SPECIMEN",1989,6,11,"1989-06-11","WGS84",NA,"1309573"
+"Bromus erectus",-83.46508,45.21407,"","US","PRESENT",969,"MICH","1988961770",NA,"PRESERVED_SPECIMEN",1988,5,29,"1988-05-29","WGS84",NA,"1309571"

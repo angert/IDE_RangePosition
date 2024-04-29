@@ -1,0 +1,4 @@
+"species","decimalLongitude","decimalLatitude","issues","countryCode","occurrenceStatus","coordinateUncertaintyInMeters","institutionCode","gbifID","references","basisOfRecord","year","month","day","eventDate","geodeticDatum","datasetName","catalogNumber"
+"Carex flacca",-84.92492,45.36997,"","US","PRESENT",969,"MICH","1988964418",NA,"PRESERVED_SPECIMEN",1994,6,8,"1994-06-08","WGS84",NA,"1322252"
+"Carex flacca",-90.905664,33.40313,"cdc,inmafu","US","PRESENT",469,"MMNS","3707730004","https://sernecportal.org/portal/collections/individual/index.php?occid=21118590","PRESERVED_SPECIMEN",1993,5,11,"1993-05-11","WGS84",NA,"MMNS047856"
+"Carex flacca",-81.279917,44.791845,"cdc","CA","PRESENT",500,"iNaturalist","2856514646","https://www.inaturalist.org/observations/57142298","HUMAN_OBSERVATION",1984,6,10,"1984-06-10T12:32","WGS84","iNaturalist research-grade observations","57142298"
