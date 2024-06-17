@@ -1,0 +1,4 @@
+"species","decimalLongitude","decimalLatitude","issues","countryCode","occurrenceStatus","coordinateUncertaintyInMeters","institutionCode","gbifID","references","basisOfRecord","year","month","day","eventDate","geodeticDatum","catalogNumber"
+"Molinia caerulea",-68.04944,44.33361,"cdc,gass84,inmano","US","PRESENT",1,"UConn","699271205",NA,"PRESERVED_SPECIMEN",2000,9,5,"2000-09-05","WGS84","CONN00157954"
+"Molinia caerulea",-76.86357,44.75764,"cdc","CA","PRESENT",100,"iNaturalist","3915361356","https://www.inaturalist.org/observations/96373829","HUMAN_OBSERVATION",1990,8,12,"1990-08-12T15:05","WGS84","96373829"
+"Molinia caerulea",-78.69869,35.794317,"cdc,cdround,gass84,inmafu","US","PRESENT",160,"NCSC","1990236181","https://sernecportal.org/portal/collections/individual/index.php?occid=8719139","PRESERVED_SPECIMEN",1983,9,16,"1983-09-16","WGS84","NCSC00007204"

@@ -1,0 +1,8 @@
+"species","decimalLongitude","decimalLatitude","issues","countryCode","occurrenceStatus","coordinateUncertaintyInMeters","institutionCode","gbifID","references","basisOfRecord","year","month","day","eventDate","geodeticDatum","catalogNumber"
+"Panicum acuminatum",-123.344098,38.594406,"cdc,inmafu","US","PRESENT",60,"OBI","2270208330","https://cch2.org/portal/collections/individual/index.php?occid=197266","PRESERVED_SPECIMEN",1994,6,5,"1994-06-05","WGS84","OBI180804"
+"Panicum acuminatum",-119.63528,37.72287,"cdc,inmafu","US","PRESENT",450,"SJSU","2451554580","https://cch2.org/portal/collections/individual/index.php?occid=366713","PRESERVED_SPECIMEN",1983,9,17,"1983-09-17","WGS84","10294"
+"Panicum acuminatum",-86.14,37.55,"cdc,gass84,inmafu","US","PRESENT",1000,"SFV","2575149152","https://cch2.org/portal/collections/individual/index.php?occid=3769560","PRESERVED_SPECIMEN",1977,5,29,"1977-05-29","WGS84","SFV115701"
+"Panicum acuminatum",-76.311325,39.809905,"cdc,cdround,inmafu","US","PRESENT",1000,"MVSC","3331196946",NA,"PRESERVED_SPECIMEN",1970,6,17,"1970-06-17","WGS84","451627"
+"Panicum acuminatum",-76.311836,39.812765,"cdc,cdround,txmatfuz,inmafu","US","PRESENT",150,"MVSC","3331192422",NA,"PRESERVED_SPECIMEN",1970,6,29,"1970-06-29","WGS84","452124"
+"Panicum acuminatum",-76.302665,39.807942,"cdc,cdround,txmatfuz,inmafu","US","PRESENT",150,"MVSC","3331192484",NA,"PRESERVED_SPECIMEN",1970,6,22,"1970-06-22","WGS84","452180"
+"Panicum acuminatum",-76.319192,39.818332,"cdc,cdround,txmatfuz,inmafu","US","PRESENT",150,"MVSC","3331197412",NA,"PRESERVED_SPECIMEN",1970,7,6,"1970-07-06","WGS84","451715"
