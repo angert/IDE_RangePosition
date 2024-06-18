@@ -1,0 +1,26 @@
+"species","decimalLongitude","decimalLatitude","issues","countryCode","occurrenceStatus","coordinateUncertaintyInMeters","institutionCode","gbifID","references","basisOfRecord","year","month","day","eventDate","geodeticDatum","catalogNumber"
+"Vicia hirsuta",-124.221389,40.676389,"cdc,ambinst","US","PRESENT",201,"CHSC","2417988065","https://cch2.org/portal/collections/individual/index.php?occid=2073487","PRESERVED_SPECIMEN",1997,4,29,"1997-04-29","WGS84","CHSC068556"
+"Vicia hirsuta",-123.93131,46.11929,"cdc,ambinst","US","PRESENT",805,"OSU","3820574484","https://oregonflora.org/collections/individual/index.php?occid=1064952","PRESERVED_SPECIMEN",1997,5,19,"1997-05-19","WGS84",NA
+"Vicia hirsuta",-123.26598,44.7145,"cdc,ambinst","US","PRESENT",805,"OSU","3820569860","https://oregonflora.org/collections/individual/index.php?occid=1073706","PRESERVED_SPECIMEN",1997,5,27,"1997-05-27","WGS84",NA
+"Vicia hirsuta",-124.1604,40.8621,"cdc,inmafu","US","PRESENT",980,"HSC","2982036561","https://cch2.org/portal/collections/individual/index.php?occid=1827043","PRESERVED_SPECIMEN",1991,4,NA,"1991-04","WGS84",NA
+"Vicia hirsuta",-121.643889,39.643889,"cdc,ambinst","US","PRESENT",402,"CHSC","2417977595","https://cch2.org/portal/collections/individual/index.php?occid=2064996","PRESERVED_SPECIMEN",1991,4,26,"1991-04-26","WGS84","CHSC058672"
+"Vicia hirsuta",-124.051555,42.571102,"cdc,cdround,ambinst","US","PRESENT",201,"OSU","3820566830","https://oregonflora.org/collections/individual/index.php?occid=1073449","PRESERVED_SPECIMEN",1991,5,30,"1991-05-30","WGS84",NA
+"Vicia hirsuta",-123.71,39.26,"cdc,gass84,inmafu","US","PRESENT",1000,"SFV","2575158665","https://cch2.org/portal/collections/individual/index.php?occid=612637","PRESERVED_SPECIMEN",1982,6,1,"1982-06-01","WGS84","SFV107064"
+"Vicia hirsuta",-123.685543,39.135472,"cdc,inmafu","US","PRESENT",300,"HSC","2982035393","https://cch2.org/portal/collections/individual/index.php?occid=1823706","PRESERVED_SPECIMEN",1981,6,1,"1981-06-01","WGS84",NA
+"Vicia hirsuta",-123.566061,39.160341,"cdc,inmafu","US","PRESENT",200,"HSC","2982037387","https://cch2.org/portal/collections/individual/index.php?occid=1823807","PRESERVED_SPECIMEN",1981,6,1,"1981-06-01","WGS84",NA
+"Vicia hirsuta",-123.755351,39.183705,"cdc,inmafu","US","PRESENT",100,"HSC","2982035385","https://cch2.org/portal/collections/individual/index.php?occid=1823562","PRESERVED_SPECIMEN",1980,4,19,"1980-04-19","WGS84",NA
+"Vicia hirsuta",-124.091154,40.919628,"cdc,gass84,inmafu","US","PRESENT",969,"HSC","2982017846","https://cch2.org/portal/collections/individual/index.php?occid=1793216","PRESERVED_SPECIMEN",1978,4,18,"1978-04-18","WGS84",NA
+"Vicia hirsuta",-123.235349,44.603381,"ambcol","US","PRESENT",919,"KU","177056243",NA,"PRESERVED_SPECIMEN",1978,5,7,"1978-05-07","WGS84","334171"
+"Vicia hirsuta",-123.24113,44.60008,"cdc,ambinst","US","PRESENT",805,"OSU","3820573302","https://oregonflora.org/collections/individual/index.php?occid=1059990","PRESERVED_SPECIMEN",1978,5,7,"1978-05-07","WGS84",NA
+"Vicia hirsuta",-122.799511,45.468814,"cdc,incomis,inmafu","US","PRESENT",48,"HPSU","4070150746",NA,"PRESERVED_SPECIMEN",1978,5,1,"1978-05-01","WGS84","3961"
+"Vicia hirsuta",-123.14,44.36,"cdc,gass84,ambinst","US","PRESENT",805,"OSU","3820589005","https://oregonflora.org/collections/individual/index.php?occid=1129193","PRESERVED_SPECIMEN",1978,6,29,"1978-06-29","WGS84",NA
+"Vicia hirsuta",-123.4999,38.7785,"cdc,colmano,inmafu","US","PRESENT",200,"SD","3125061646","https://cch2.org/portal/collections/individual/index.php?occid=494778","PRESERVED_SPECIMEN",1977,6,19,"1977-06-19","WGS84",NA
+"Vicia hirsuta",-124.079692,40.870067,"cdc,inmafu","US","PRESENT",37,"HSC","2982050417","https://cch2.org/portal/collections/individual/index.php?occid=1784695","PRESERVED_SPECIMEN",1976,4,20,"1976-04-20","WGS84",NA
+"Vicia hirsuta",-124.148922,40.883693,"cdc,colmafu,inmafu","US","PRESENT",627,"DAV","2421735524","https://cch2.org/portal/collections/individual/index.php?occid=1361689","PRESERVED_SPECIMEN",1976,5,13,"1976-05-13","WGS84","DAV337377"
+"Vicia hirsuta",-122.829795,45.535647,"cdc,incomis,inmafu","US","PRESENT",53,"HPSU","4070161917",NA,"PRESERVED_SPECIMEN",1976,7,6,"1976-07-06","WGS84","3365"
+"Vicia hirsuta",-124.22218,40.76541,"cdc,inmafu","US","PRESENT",245,"HSC","2982001250","https://cch2.org/portal/collections/individual/index.php?occid=1781191","PRESERVED_SPECIMEN",1975,5,24,"1975-05-24","WGS84",NA
+"Vicia hirsuta",-122.806983,45.49553,"cdc,incomis,inmafu","US","PRESENT",40,"HPSU","4070160745",NA,"PRESERVED_SPECIMEN",1975,6,29,"1975-06-29","WGS84","3045"
+"Vicia hirsuta",-121.528137,45.997343,"cdc,incomis,inmafu","US","PRESENT",14,"PSM","4070506467",NA,"PRESERVED_SPECIMEN",1973,5,8,"1973-05-08","WGS84","8892"
+"Vicia hirsuta",-124.092357,40.497506,"cdc,gass84,inmafu","US","PRESENT",969,"HSC","2982023784","https://cch2.org/portal/collections/individual/index.php?occid=1811625","PRESERVED_SPECIMEN",1973,5,26,"1973-05-26","WGS84",NA
+"Vicia hirsuta",-122.457475,47.111473,"cdc,incomis,inmafu","US","PRESENT",94,"PSM","4070527037",NA,"PRESERVED_SPECIMEN",1972,5,26,"1972-05-26","WGS84","6499"
+"Vicia hirsuta",-123.3,44.4,"cdc,gass84,ambinst","US","PRESENT",805,"OSU","3820648604","https://oregonflora.org/collections/individual/index.php?occid=996966","PRESERVED_SPECIMEN",1972,6,21,"1972-06-21","WGS84",NA
