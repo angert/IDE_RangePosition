@@ -1,7 +1,7 @@
 # project: IDE (international drought experiment)
 # code summary: calculate posiition in range or niche for IDE sites
 # written by: A Louthan
-# modified: 241106
+# modified: 241121
 
 # libraries and functions -----
 library(raster)
@@ -9,26 +9,32 @@ library(sp)
 c.fun<-function(df, center, scale) {
   return((df-center)/scale )
 } 
-setwd("/Users/allisonlouthan/Dropbox/climate across latitudes/IDE/IDE_RangePosition")
 
 # load in data----
-
 # load terrestial map area from: https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/
 terrestrial_sf <- rnaturalearth::ne_download(scale= 10, type= "land", "physical")
 
 extract_coords1 <- function(x,ii){x@coords[,ii]}
 S.pole.pt <- SpatialPoints(coords= cbind(x= 0, y= -90), proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")) # making a Spatial points object of the N pole
 N.pole.pt <- SpatialPoints(coords= cbind(x= 0, y= 90), proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")) # making a Spatial points object of the N pole
-warning("need to check that all CRS projectsions are the same, i don't think they are")
+
+
+r <- raster::stack( # I am re-loading this b/c if I load it as input data I get a weird usage error
+  geodata::worldclim_global("bio", 2.5, path=tempdir()))
 
 # load pca & species-site combos
 load("data/01_input_data.RData")
+species_sites <- species_sites[which(species_sites$species %in% gsub("_", " ",gsub(".csv", "",list.files("data/cleaned_occurrence")))),]
+species_sites <- species_sites[which(!is.na(species_sites$Lat) & !is.na(species_sites$Long)), ]
+
 
 # initialize the species-specific loop---- 
-alpharange <- 15
-alphaniche <- 10
+alpharange <- 15 # for the alpha shapes, 15 is the default for geographic range,
+alphaniche <- 10 # 10 is the default for niche
+max.alpha <- 400 # the max value-- at which you use the MCP-- is 400
+alpha.step <- 5 # and this is the increment of increase
 
-m1 <- as.data.frame(matrix(ncol=23+ 11, nrow= nrow(species_sites)))
+m1 <- as.data.frame(matrix(ncol=24, nrow= nrow(species_sites)))
 names(m1) <- c( "rangearea", 
                 "rangepcaarea", 
                 "cat.descriptor", 
@@ -60,18 +66,20 @@ sf::sf_use_s2(FALSE)
 options(warn= 2)
 cat.quantile <- 0.2 # what percent of the species' range is considered the "edge" (0.2 = outer 20% considered the edge, etc.)
 
+
+
 # the loop-----
 
-for (i in i:length(unique(species_sites$species))){ # cycling through all the unique species in the list
+for (i in 1:length(unique(species_sites$species))){ # cycling through all the unique species in the list
   species_name_i <- unique(species_sites$species)[i]
-  
   MCP.range <- MCP.niche <-  "N"  # this term indicates whether the alpha shape is actually the MCP; default is no
-  species_csv_i <- read.csv(paste("data/cleaned_occurrence", species_name, ".csv", sep= "")) # this gives the csv locations for the species of interest
+  species_csv_i <- read.csv(paste("data/cleaned_occurrence/", sub(" ", "_", species_name_i), ".csv", sep= "")) # this gives the csv locations for the species of interest
   species_csv_i <- species_csv_i[complete.cases(cbind(as.numeric(species_csv_i$decimalLongitude), as.numeric(species_csv_i$decimalLatitude))), ] # removes any rows that do not have BOTH lat and long
   
   species.indices <- which(species_sites_positions$species == species_name_i)
   demo.speciesi <- species_sites_positions[species.indices,] # these two lines subsets large data file to include only species i
   results <- matrix(NA, nrow= dim(demo.speciesi)[1], ncol= ncol(m1)) # sets up a location to store the results
+  
   
   # construct range maps for convex hull, alphahull, 95% convex hull----
   
@@ -101,16 +109,38 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
   options(warn=0)
   my.alpha.shape <- try(alphahull::ahull(x = speciespoints_i_foralphahull@coords[,1], y = speciespoints_i_foralphahull@coords[,2], alpha=alpharange), 
                         silent=TRUE)
+  rangearea.alphahull <-  try(alphahull::areaahull(my.alpha.shape, alpha=alpharange),  silent=TRUE) # then calculate the area of the alpha shape
+  alpha.used <- alpharange
   options(warn=2)
-  if (class(my.alpha.shape)== "try-error") {  # if construction of the alpha shape fails when running the (finnicky) ahull command
-    stop("when you run this for the first time, for species i, you will need to try sequentially larger alphas (up to XXX) to find the alpha shape ") 
-    MCP.range <- "Y" # if a small enough alpha value for the alpha shape cannot be found, then the alpha shape should be the MCP
-  } else { # if the ahull command works with the given alpha value
-    rangearea.alphahull <-  try(alphahull::areaahull(my.alpha.shape, alpha=alpharange),  silent=TRUE) # then calculate the area of the alpha shape
-    if (class(rangearea.alphahull)== "try-error") { # if calc of the alpha shape's area fails when running the (finnicky) areaahull command
-      stop("when you run this for the first time, for species i, you will need to try sequentially larger alphas (up to XXX) to calc the area of the alpha shape ") 
-    } else { # if neither the ahull nor the areaahull command fails, then get the "track" of the alpha shape
-      alpha.shape.track <- alphahull::ahull_track(x = speciespoints_i_foralphahull@coords[,1], y = speciespoints_i_foralphahull@coords[,2], nps= 1000, alpha=alpharange)
+  # if construction of the alpha shape or calc of alpha shape area fails when running the (finnicky) ahull command
+  if (class(my.alpha.shape)== "try-error" | class(rangearea.alphahull) == "try-error") { 
+    #then first try the max.alpha, because weird-shaped ranges tend to never have an alpha value that works
+    options(warn=0)
+    my.alpha.shape <- try(alphahull::ahull(x = speciespoints_i_foralphahull@coords[,1], y = speciespoints_i_foralphahull@coords[,2], alpha=max.alpha), 
+                          silent=TRUE)
+    rangearea.alphahull <-  try(alphahull::areaahull(my.alpha.shape, alpha=max.alpha),  silent=TRUE) # then calculate the area of the alpha shape
+    options(warn=2)
+    if (class(my.alpha.shape)== "try-error" | class(rangearea.alphahull) == "try-error") {
+      MCP.range <- "Y" # if the max.alpha value does not result in a valid alpha shape, then the alpha shape should be the MCP
+      
+      } else if (
+        class(my.alpha.shape)!= "try-error" & class(rangearea.alphahull) != "try-error") {
+# if the max.alpha value does result in a valid alpha shape, find the smallest alpha value that results in a valid alpha shape
+  for (kk in seq(from = alpharange+ alpha.step, to = max.alpha, by= alpha.step)){
+       options(warn=0)
+       my.alpha.shape <- try(alphahull::ahull(x = speciespoints_i_foralphahull@coords[,1], y = speciespoints_i_foralphahull@coords[,2], alpha=kk), 
+                             silent=TRUE)
+       rangearea.alphahull <-  try(alphahull::areaahull(my.alpha.shape, alpha=kk),  silent=TRUE) # then calculate the area of the alpha shape
+       alpha.used <- kk
+       options(warn=2)
+       if (class(my.alpha.shape) != "try-error" & class(rangearea.alphahull) != "try-error") {break} # if the tested alpha value results in a valid alpha shape, stop the loio    
+       } # end kk loop
+    } 
+    }  
+  
+  if (MCP.range !=  "Y"){
+# if neither the ahull nor the areaahull command fails, then get the "track" of the alpha shape
+      alpha.shape.track <- alphahull::ahull_track(x = speciespoints_i_foralphahull@coords[,1], y = speciespoints_i_foralphahull@coords[,2], nps= 1000, alpha=alpha.used)
       all.alpha.coords <- NULL
       for (no_segments in 1:length(alpha.shape.track)){ 
         all.alpha.coords <-  rbind(all.alpha.coords,alpha.shape.track[[no_segments]]$data)}
@@ -118,21 +148,24 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
       speciesrange_i_xrange.alphahull <- range(all.alpha.coords$x)
       speciesrange_i_yrange.alphahull <-  range(all.alpha.coords$y)
       # NB we do not confine this range area to terrestrial b/c alphahulls allow for holes in the species range
-    }} 
+}    
+
   
   #get the 95% convex hull
-  range.95 <- adehabitatHR::mcp(speciespoints_i, percent= 95, unin= "m", unout= "m2") 
+ if (length(speciespoints_i) >= 5){
+   range.95 <- adehabitatHR::mcp(speciespoints_i, percent= 95, unin= "m", unout= "m2") 
   range.95 <- sf::st_intersection(sf::st_geometry(terrestrial_sf_projected), sf::st_geometry(sf::st_as_sf(range.95))) # calculate the area of the hull that intersects with terrestrial area
   rangearea.95 <- as.numeric(sum( sf::st_area(range.95))) # units on this range area are m^2
   speciesrange_i_absyrange.95 <- abs(c(as.numeric(attributes(range.95)$bbox$ymin), as.numeric(attributes(range.95)$bbox$ymax)))
   speciesrange_i_xrange.95 <-  c(as.numeric(attributes(range.95)$bbox$xmin), as.numeric(attributes(range.95)$bbox$xmax))
-  speciesrange_i_yrange.95 <-  c(as.numeric(attributes(range.95)$bbox$ymin), as.numeric(attributes(range.95)$bbox$ymax))
+  speciesrange_i_yrange.95 <-  c(as.numeric(attributes(range.95)$bbox$ymin), as.numeric(attributes(range.95)$bbox$ymax)) } 
   
   # for species whose ranges overlap the equator, make a north and a south hemisphere range map----- 
   
   # N and S hemisphere range map for species whose ranges overlap the equator for convex hull and alpha hull ; note they share range extents
   if (min(speciesrange_i_yrange) <0 & max(speciesrange_i_yrange)>0){ # if the species' range overlaps the equator
     
+
     # divide up the species' range into a North hemisphere part & a South hemisphere part
     # note that we have to generate hemisphere-specific range polygons, rather than just using the extremes of points in the 
     # North and South hemisphere,
@@ -148,6 +181,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     y.North <- as.numeric(c(species_csv_i.North$decimalLatitude, demo.speciesi.North$Lat)) # y is Lat
     y.North <- c(y.North, 0) # adds an additional point to the distribution that is ON the equator
     
+    if (length(y.North)==2) {stop("there is only one point in the Northern hemisphere; check range mpas")}
     # make a spatial polygon using only North hemisphere data
     mymat.North <- cbind(x.North,y.North)
     polygon.North <- chull(x.North, y.North)
@@ -170,6 +204,8 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     x.South <- c(x.South, mean(x.South)) 
     y.South <- as.numeric(c(species_csv_i.South$decimalLatitude, demo.speciesi.South$Lat))
     y.South <- c(y.South, 0) 
+  
+    if (length(y.South)==2) {stop("there is only one point in the Southern hemisphere; check range mpas")}
     
     # make a spatial polygon using only South hemisphere data 
     mymat.South <- cbind(x.South,y.South)
@@ -183,12 +219,10 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     speciesrange_i_xrange.South <- (range(as.vector(sapply(speciesrange_i.South@polygons[[1]]@Polygons, extract_coords1, ii=1, simplify= "array"))))
     speciesrange_i_yrange.South <- (range(as.vector(sapply(speciesrange_i.South@polygons[[1]]@Polygons, extract_coords1, ii=2, simplify= "array"))) )
     
-    if (speciesrange_i_xrange.North[1]==speciesrange_i_xrange.North.95[2]){ stop("only one point in N hemisphere for convex hull; check range for this species")}
-    if (speciesrange_i_xrange.South[1]==speciesrange_i_xrange.South.95[2]){ stop("only one point in S hemisphere for convex hull; check range for this species")}
-    
   }
   
   # N and S hemisphere range map for species whose ranges overlap the equator for 95% convex hull
+  if (length(speciespoints_i) >= 5){
   if (min(speciesrange_i_yrange.95) <0 & max(speciesrange_i_yrange.95)>0) {# if the 95% range spans the equator
     
     polygon.coords.95 <- as.data.frame(raster::geom(as(range.95, "Spatial")))
@@ -202,7 +236,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     
     if (speciesrange_i_xrange.North.95[1]==speciesrange_i_xrange.North.95[2]){ stop("only one point in N hemisphere for 95%; check range for this species")}
     if (speciesrange_i_xrange.South.95[1]==speciesrange_i_xrange.South.95[2]){ stop("only one point in S hemisphere for 95%; check range for this species")}
-  } 
+  } }
   
   if (MCP.range== "N"){ 
     if (min(speciesrange_i_yrange.alphahull) <0 & max(speciesrange_i_yrange.alphahull)>0) {# if the range spans the equator
@@ -216,7 +250,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
   
   # make range maps in PCA space-----
   # get Bioclim data for the whole species range
-  range.temp.precip <- extract(r, speciespoints_i, na.omit=TRUE) # NA's here are in the ocean, so the na.omit takes those out
+  range.temp.precip <- raster::extract(r, speciespoints_i, na.omit=TRUE) # NA's here are in the ocean, so the na.omit takes those out
   # get PCA scores for demography points
   centeredNewData <-apply(range.temp.precip, MARGIN=1, FUN=c.fun, res$center, res$scale  ) # first step in getting the PCA score for the points within the species range
   species_pca_i <-t(t(res$rotation) %*% centeredNewData)[,1:2] # second step; this matrix represent the scores for PCA axes 1 & 2 for each grid cell across the range.temp.precip
@@ -239,39 +273,59 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
   
   # next, construct the alpha shape around occurrences of this species in pca space 
   options(warn=0)
+  mymat.df <- as.data.frame(mymat[!duplicated(mymat),])
   niche.alphahull <- try(alphahull::ahull(x = mymat.df$x, y = mymat.df$y,alpha=alphaniche), silent=TRUE)
+  rangepcaarea.alphahull <-  try(alphahull::areaahull(niche.alphahull), silent=TRUE)
   options(warn=2)
-  if (class(niche.alphahull)== "try-error"){ # if construction of the alpha hull fails in the ahull command
-    stop("when you run this for the first time, for species i, you will need to try sequentially larger alphas (up to XXX) to find the alpha shape, for niche ") 
-    MCP.niche <- "Y"#  then the alpha shape should be the MCP
-  } else { 
-    rangearea.pca.alphahull <-  try(alphahull::areaahull(niche.alphahull), silent=TRUE)
-    if (class(rangearea.pca.alphahull)== "try-error"){ 
-      stop("when you run this for the first time, for species i, you will need to try sequentially larger alphas (up to XXX) to find the alpha shape that will allow you to calc the area of the ahull, for niche ") 
-      MCP.niche <- "Y"#  then the alpha shape should be the MCP
-    } else { # if neither the ahull nor the areaahull command fails, then you can safely calculate the alpha hull using the alphaniche value
-      niche.alpha.shape.track <- alphahull::ahull_track(x = mymat.df$x, y = mymat.df$y,alpha=alphaniche)
-      niche.all.alpha.coords <- NULL
-      for (no_segments in 1:length(niche.alpha.shape.track)){ niche.all.alpha.coords <-  
-        rbind(niche.all.alpha.coords,niche.alpha.shape.track[[no_segments]]$data)}
-      
-      speciespcarange_i_yrange.alphahull <- range(niche.all.alpha.coords$y)
-      speciespcarange_i_xrange.alphahull <- range(niche.all.alpha.coords$x)
-      
-    }}
+  # if construction of the alpha hull fails in the ahull command or the area command... 
+  if (class(niche.alphahull)== "try-error" | class(rangepcaarea.alphahull) == "try-error") { 
+    #then first try the max.alpha, because weird-shaped ranges tend to never have an alpha value that works
+    options(warn=0)
+    niche.alphahull <- try(alphahull::ahull(x = mymat.df$x, y = mymat.df$y, alpha=max.alpha), 
+                           silent=TRUE)
+    rangepcaarea.alphahull <-  try(alphahull::areaahull(niche.alphahull, alpha=max.alpha),  silent=TRUE) # then calculate the area of the alpha shape
+    options(warn=2)
+    if (class(niche.alphahull)== "try-error" | class(rangepcaarea.alphahull) == "try-error") {
+      MCP.range <- "Y" # if the max.alpha value does not result in a valid alpha shape, then the alpha shape should be the MCP
+    } else if (class(niche.alphahull)!= "try-error" & class(rangepcaarea.alphahull) != "try-error") {
+      # if the max.alpha value does result in a valid alpha shape, find the smallest alpha value that results in a valid alpha shape
+      for (kk in seq(from = alphaniche+ alpha.step, to = max.alpha, by= alpha.step)){
+        options(warn=0)
+        niche.alphahull <- try(alphahull::ahull(x = mymat.df$x, y = mymat.df$y, alpha=kk), 
+                               silent=TRUE)
+        rangepcaarea.alphahull <-  try(alphahull::areaahull(niche.alphahull, alpha=kk),  silent=TRUE) # then calculate the area of the alpha shape
+        options(warn=2)
+        alpha.used <- kk
+        if (class(niche.alphahull) != "try-error" & class(rangepcaarea.alphahull) != "try-error") {break} # if the tested alpha value results in a valid alpha shape, stop the loio    
+      } # end kk loop
+    } 
+  }  
+  
+  if (MCP.niche !=  "Y"){
+    # if neither the ahull nor the areaahull command fails, then get the "track" of the alpha shape
+    niche.alpha.shape.track <- alphahull::ahull_track(x = mymat.df$x, y = mymat.df$y, nps= 1000, alpha=alpha.used)
+    niche.all.alpha.coords <- NULL
+    for (no_segments in 1:length(niche.alpha.shape.track)){ 
+      niche.all.alpha.coords <-  rbind(niche.all.alpha.coords,niche.alpha.shape.track[[no_segments]]$data)}
+    speciespcarange_i_xrange.alphahull <- range(niche.all.alpha.coords$x)
+    speciespcarange_i_yrange.alphahull <-  range(niche.all.alpha.coords$y)
+    # NB we do not confine this range area to terrestrial b/c alphahulls allow for holes in the species range
+  }    
+  
   # finally, construct the 95% convex hull around occurrences of this species in pca space 
+  if (length(speciespoints_i) >= 5){
   rangepca.95 <- adehabitatHR::mcp(SpatialPoints(mymat), percent= 95, unin= "m", unout= "m2") # units on this are m^2
   speciespcarange_i_xrange.95 <-   as.numeric(attributes(rangepca.95)$bbox["x",])
   speciespcarange_i_yrange.95 <-   as.numeric(attributes(rangepca.95)$bbox["y",])
-  rangeareapca.95 <- sum(rangepca.95@data$area)
-  
+  rangepcaarea.95 <- sum(rangepca.95@data$area)
+  }
   # final checks on potential range issues for this species
   if (rangearea== 0 | is.na(rangearea)){stop("range area is zero or na!")} 
   if(MCP.range== "N") if (identical(rangearea.alphahull, 0)){stop("alphahull range area is zero or na!")} 
-  if (rangearea.95== 0 | is.na(rangearea.95)){stop("95% range area is zero or na!")} 
+  if (length(speciespoints_i) >= 5){  if (rangearea.95== 0 | is.na(rangearea.95)){stop("95% range area is zero or na!")} }
   if (rangepcaarea== 0 | is.na(rangepcaarea)){stop("range pca area is zero")}
-  if(MCP.niche== "N") if (identical(rangearea.pca.alphahull,0 )){stop("range pca area is zero for alphahull")}
-  if (rangeareapca.95 == 0 | is.na(rangeareapca.95)){stop("range pca area is zero for 95")}
+  if(MCP.niche== "N") if (identical(rangepcaarea.alphahull,0 )){stop("range pca area is zero for alphahull")}
+  if (length(speciespoints_i) >= 5){ if (rangepcaarea.95 == 0 | is.na(rangepcaarea.95)){stop("range pca area is zero for 95")}}
   
   
   for (ii in 1:dim(demo.speciesi)[1]){ # cycles through the demographic data points for a given species 
@@ -295,13 +349,14 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     if (abs(demo.pt@coords[2]) > yrange.upperquantile) {cat.descriptor <- "poleward.edge"} 
     if (abs(demo.pt@coords[2]) < yrange.lowerquantile) {cat.descriptor <- "equatorward.edge"}
     if (abs(demo.pt@coords[2]) <= yrange.upperquantile & abs(demo.pt@coords[2]) >= yrange.lowerquantile) {
-      if (demo.pt@coords[1] < xrange.lowerquantile) {cat.descriptor <- "central.edge"} else
-        if (demo.pt@coords[1] > xrange.upperquantile) {cat.descriptor <- "central.edge"} else
-          if (demo.pt@coords[1] <= xrange.upperquantile & demo.pt@coords[1] >= xrange.lowerquantile) {cat.descriptor <- "central"} else
-          {cat.descriptor <- NA}
+      if (demo.pt@coords[1] < xrange.lowerquantile) {cat.descriptor <- "central.edge"} else if (
+        demo.pt@coords[1] > xrange.upperquantile) {cat.descriptor <- "central.edge"} else if (
+          demo.pt@coords[1] <= xrange.upperquantile & demo.pt@coords[1] >= xrange.lowerquantile) {cat.descriptor <- "central"} else {
+          cat.descriptor <- NA}
     }
     
     # categorical position within range for 95% hull 
+    if (length(speciespoints_i) >= 5){
     yrange.lowerquantile.95 <- min(speciesrange_i_absyrange.95)+ (max(speciesrange_i_absyrange.95)- min(speciesrange_i_absyrange.95))*cat.quantile
     yrange.upperquantile.95 <- min(speciesrange_i_absyrange.95)+ (max(speciesrange_i_absyrange.95)- min(speciesrange_i_absyrange.95))*(1-cat.quantile)
     xrange.lowerquantile.95 <- min(speciesrange_i_xrange.95)+ (max(speciesrange_i_xrange.95)- min(speciesrange_i_xrange.95))*cat.quantile
@@ -310,11 +365,11 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     if (abs(demo.pt@coords[2]) > yrange.upperquantile.95) {cat.descriptor.95 <-  "poleward.edge"} 
     if (abs(demo.pt@coords[2]) < yrange.lowerquantile.95) {cat.descriptor.95 <- "equatorward.edge"}
     if (abs(demo.pt@coords[2]) <= yrange.upperquantile.95 & abs(demo.pt@coords[2]) >= yrange.lowerquantile.95) {
-      if (demo.pt@coords[1] < xrange.lowerquantile.95) {cat.descriptor.95 <- "central.edge"} else
-        if (demo.pt@coords[1] > xrange.upperquantile.95) {cat.descriptor.95 <- "central.edge"} else
-          if (demo.pt@coords[1] <= xrange.upperquantile.95 & demo.pt@coords[1] >= xrange.lowerquantile.95) {cat.descriptor.95 <- "central"} else
-          {cat.descriptor.95 <- NA}
-    }
+      if (demo.pt@coords[1] < xrange.lowerquantile.95) {cat.descriptor.95 <- "central.edge"} else if (
+        demo.pt@coords[1] > xrange.upperquantile.95) {cat.descriptor.95 <- "central.edge"} else if (
+          demo.pt@coords[1] <= xrange.upperquantile.95 & demo.pt@coords[1] >= xrange.lowerquantile.95) {cat.descriptor.95 <- "central"} else {
+          cat.descriptor.95 <- NA}
+    }}
     
     # categorial poisition within range for alphahull
     if (MCP.range == "N"){ # assuming we were able to calculate an alpha hull.... 
@@ -325,10 +380,10 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
       if (abs(demo.pt@coords[2]) > yrange.upperquantile.alphahull) {cat.descriptor.alphahull <-  "poleward.edge"} 
       if (abs(demo.pt@coords[2]) < yrange.lowerquantile.alphahull) {cat.descriptor.alphahull <- "equatorward.edge"}
       if (abs(demo.pt@coords[2]) <= yrange.upperquantile.alphahull & abs(demo.pt@coords[2]) >= yrange.lowerquantile.alphahull) {
-        if (demo.pt@coords[1] < xrange.lowerquantile.alphahull) {cat.descriptor.alphahull <- "central.edge"} else
-          if (demo.pt@coords[1] > xrange.upperquantile.alphahull) {cat.descriptor.alphahull <- "central.edge"} else
-            if (demo.pt@coords[1] <= xrange.upperquantile.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.alphahull) {cat.descriptor.alphahull <- "central"} else
-            {cat.descriptor.alphahull <- NA}
+        if (demo.pt@coords[1] < xrange.lowerquantile.alphahull) {cat.descriptor.alphahull <- "central.edge"} else if (
+          demo.pt@coords[1] > xrange.upperquantile.alphahull) {cat.descriptor.alphahull <- "central.edge"} else if (
+            demo.pt@coords[1] <= xrange.upperquantile.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.alphahull) {cat.descriptor.alphahull <- "central"} else {
+            cat.descriptor.alphahull <- NA}
       } }
     
     # finding alternate metrics of position within range for species whose ranges overlap the poles or equator-----
@@ -341,7 +396,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     
     if (min(speciesrange_i_yrange)<0 & max(speciesrange_i_yrange)>0) {cat.descriptor <- "overlaps equator"}
     if ( MCP.range== "N"){  if (min(speciesrange_i_yrange.alphahull)<0 & max(speciesrange_i_yrange.alphahull)>0) {cat.descriptor.alphahull <- "overlaps equator"}}
-    if (min(speciesrange_i_yrange.95)<0 & max(speciesrange_i_yrange.95)>0) {cat.descriptor.95 <- "overlaps equator"}
+    if (length(speciespoints_i) >= 5){  if (min(speciesrange_i_yrange.95)<0 & max(speciesrange_i_yrange.95)>0) {cat.descriptor.95 <- "overlaps equator"}}
     
     # finding alternate metrics of position within range for species whose ranges overlap the poles or equator (convex hull)
     if (cat.descriptor== "overlaps equator"){
@@ -356,9 +411,9 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
         if (abs(demo.pt@coords[2]) > yrange.upperquantile.North) {cat.descriptor.eqsp <- "poleward.edge"} 
         if (abs(demo.pt@coords[2]) < yrange.lowerquantile.North) {cat.descriptor.eqsp <- "equatorward.edge"}
         if (abs(demo.pt@coords[2]) <= yrange.upperquantile.North & abs(demo.pt@coords[2]) >= yrange.lowerquantile.North) {
-          if (demo.pt@coords[1] < xrange.lowerquantile.North) {cat.descriptor.eqsp <- "central.edge"} else
-            if (demo.pt@coords[1] > xrange.upperquantile.North) {cat.descriptor.eqsp <- "central.edge"} else
-              if (demo.pt@coords[1] <= xrange.upperquantile.North & demo.pt@coords[1] >= xrange.lowerquantile.North) {
+          if (demo.pt@coords[1] < xrange.lowerquantile.North) {cat.descriptor.eqsp <- "central.edge"} else if (
+            demo.pt@coords[1] > xrange.upperquantile.North) {cat.descriptor.eqsp <- "central.edge"} else if (
+              demo.pt@coords[1] <= xrange.upperquantile.North & demo.pt@coords[1] >= xrange.lowerquantile.North) {
                 cat.descriptor.eqsp <- "central"} else {
                   cat.descriptor.eqsp <- NA}}
       }
@@ -374,15 +429,15 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
         if (abs(demo.pt@coords[2]) > yrange.upperquantile.South) {cat.descriptor.eqsp <- "poleward.edge"} 
         if (abs(demo.pt@coords[2]) < yrange.lowerquantile.South) {cat.descriptor.eqsp <-  "equatorward.edge"}
         if (abs(demo.pt@coords[2]) <= yrange.upperquantile.South & abs(demo.pt@coords[2]) >= yrange.lowerquantile.South) {
-          if (demo.pt@coords[1] < xrange.lowerquantile.South) {cat.descriptor.eqsp <- "central.edge"} else
-            if (demo.pt@coords[1] > xrange.upperquantile.South) {cat.descriptor.eqsp <-  "central.edge"} else
-              if (demo.pt@coords[1] <= xrange.upperquantile.South & demo.pt@coords[1] >= xrange.lowerquantile.South) {cat.descriptor.eqsp <-  "central"} else
-              {cat.descriptor.eqsp <- NA}}
+          if (demo.pt@coords[1] < xrange.lowerquantile.South) {cat.descriptor.eqsp <- "central.edge"} else if (
+            demo.pt@coords[1] > xrange.upperquantile.South) {cat.descriptor.eqsp <-  "central.edge"} else if (
+              demo.pt@coords[1] <= xrange.upperquantile.South & demo.pt@coords[1] >= xrange.lowerquantile.South) {cat.descriptor.eqsp <-  "central"} else {
+              cat.descriptor.eqsp <- NA}}
       }
-    } else (cat.descriptor.eqsp  <- cat.descriptor)
+    } else {cat.descriptor.eqsp  <- cat.descriptor}
     
     # finding alternate metrics of position within range for species whose ranges overlap the poles or equator (95% hull)
-    if (cat.descriptor.95 == "overlaps equator"){
+    if (length(speciespoints_i) >= 5){ if (cat.descriptor.95 == "overlaps equator"){
       
       
       if(demo.pt@coords[2]>=0 ){ # if the demo pop is in the NOrthern hemisphere or on the equator
@@ -396,10 +451,10 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
         if (abs(demo.pt@coords[2]) > yrange.upperquantile.North.95) {cat.descriptor.eqsp.95 <- "poleward.edge"} 
         if (abs(demo.pt@coords[2]) < yrange.lowerquantile.North.95) {cat.descriptor.eqsp.95 <- "equatorward.edge"}
         if (abs(demo.pt@coords[2]) <= yrange.upperquantile.North.95 & abs(demo.pt@coords[2]) >= yrange.lowerquantile.North.95) {
-          if (demo.pt@coords[1] < xrange.lowerquantile.North.95) {cat.descriptor.eqsp.95 <- "central.edge"} else
-            if (demo.pt@coords[1] > xrange.upperquantile.North.95) {cat.descriptor.eqsp.95 <- "central.edge"} else
-              if (demo.pt@coords[1] <= xrange.upperquantile.North.95 & demo.pt@coords[1] >= xrange.lowerquantile.North.95) {cat.descriptor.eqsp.95 <- "central"} else
-              {cat.descriptor.eqsp.95 <- NA}}
+          if (demo.pt@coords[1] < xrange.lowerquantile.North.95) {cat.descriptor.eqsp.95 <- "central.edge"} else if (
+            demo.pt@coords[1] > xrange.upperquantile.North.95) {cat.descriptor.eqsp.95 <- "central.edge"} else if (
+              demo.pt@coords[1] <= xrange.upperquantile.North.95 & demo.pt@coords[1] >= xrange.lowerquantile.North.95) {cat.descriptor.eqsp.95 <- "central"} else {
+              cat.descriptor.eqsp.95 <- NA}}
       }
       
       if(demo.pt@coords[2]<0){ # if the demo pop is in the Southern hemisphere 
@@ -413,12 +468,12 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
         if (abs(demo.pt@coords[2]) > yrange.upperquantile.South.95) {cat.descriptor.eqsp.95 <- "poleward.edge"} 
         if (abs(demo.pt@coords[2]) < yrange.lowerquantile.South.95) {cat.descriptor.eqsp.95 <- "equatorward.edge"}
         if (abs(demo.pt@coords[2]) <= yrange.upperquantile.South.95 & abs(demo.pt@coords[2]) >= yrange.lowerquantile.South.95) {
-          if (demo.pt@coords[1] < xrange.lowerquantile.South.95) {cat.descriptor.eqsp.95 <- "central.edge"} else
-            if (demo.pt@coords[1] > xrange.upperquantile.South.95) {cat.descriptor.eqsp.95 <- "central.edge"} else
-              if (demo.pt@coords[1] <= xrange.upperquantile.South.95 & demo.pt@coords[1] >= xrange.lowerquantile.South.95) {cat.descriptor.eqsp.95 <- "central"} else
-              {cat.descriptor.eqsp.95 <- NA}}
+          if (demo.pt@coords[1] < xrange.lowerquantile.South.95) {cat.descriptor.eqsp.95 <- "central.edge"} else if (
+            demo.pt@coords[1] > xrange.upperquantile.South.95) {cat.descriptor.eqsp.95 <- "central.edge"} else if (
+              demo.pt@coords[1] <= xrange.upperquantile.South.95 & demo.pt@coords[1] >= xrange.lowerquantile.South.95) {cat.descriptor.eqsp.95 <- "central"} else {
+              cat.descriptor.eqsp.95 <- NA}}
       }
-    } else (cat.descriptor.eqsp.95 <- cat.descriptor.95)
+    } else {cat.descriptor.eqsp.95 <- cat.descriptor.95}}
     
     # finding alternate metrics of position within range for species whose ranges overlap the poles or equator (alpha shape)
     if ( MCP.range== "N"){
@@ -435,10 +490,10 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
           if (abs(demo.pt@coords[2]) > yrange.upperquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "poleward.edge"} 
           if (abs(demo.pt@coords[2]) < yrange.lowerquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "equatorward.edge"}
           if (abs(demo.pt@coords[2]) <= yrange.upperquantile.North.alphahull & abs(demo.pt@coords[2]) >= yrange.lowerquantile.North.alphahull) {
-            if (demo.pt@coords[1] < xrange.lowerquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else
-              if (demo.pt@coords[1] > xrange.upperquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else
-                if (demo.pt@coords[1] <= xrange.upperquantile.North.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central"} else
-                {cat.descriptor.eqsp.alphahull <- NA}}
+            if (demo.pt@coords[1] < xrange.lowerquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else if (
+              demo.pt@coords[1] > xrange.upperquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else if (
+                demo.pt@coords[1] <= xrange.upperquantile.North.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.North.alphahull) {cat.descriptor.eqsp.alphahull <- "central"} else {
+                cat.descriptor.eqsp.alphahull <- NA}}
         }
         
         if(demo.pt@coords[2]<0){ # if the demo pop is in the Southern hemisphere 
@@ -452,13 +507,13 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
           if (abs(demo.pt@coords[2]) > yrange.upperquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "poleward.edge"} 
           if (abs(demo.pt@coords[2]) < yrange.lowerquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "equatorward.edge"}
           if (abs(demo.pt@coords[2]) <= yrange.upperquantile.South.alphahull & abs(demo.pt@coords[2]) >= yrange.lowerquantile.South.alphahull) {
-            if (demo.pt@coords[1] < xrange.lowerquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else
-              if (demo.pt@coords[1] > xrange.upperquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else
-                if (demo.pt@coords[1] <= xrange.upperquantile.South.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central"} else
-                {cat.descriptor.eqsp.alphahull <- NA}}
+            if (demo.pt@coords[1] < xrange.lowerquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else if (
+             demo.pt@coords[1] > xrange.upperquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central.edge"} else if (
+                demo.pt@coords[1] <= xrange.upperquantile.South.alphahull & demo.pt@coords[1] >= xrange.lowerquantile.South.alphahull) {cat.descriptor.eqsp.alphahull <- "central"} else {
+                cat.descriptor.eqsp.alphahull <- NA}}
         }
         
-      } else (cat.descriptor.eqsp.alphahull <- cat.descriptor.alphahull)} else cat.descriptor.eqsp.alphahull <- cat.descriptor.eqsp 
+      } else {cat.descriptor.eqsp.alphahull <- cat.descriptor.alphahull}} else {cat.descriptor.eqsp.alphahull <- cat.descriptor.eqsp }
     
     
     
@@ -476,7 +531,8 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
                                                   (abs(demo.pt@coords[2])-min(speciesrange_i_absyrange.South))/(max(speciesrange_i_absyrange.South)-min(speciesrange_i_absyrange.South))   , 
                                                   rangeposition.quantile))
     
-    # next, for 95% hull
+    # next, for 95% hull 
+    if (length(speciespoints_i) >= 5){
     rangeposition.quantile.95 <- ifelse(cat.descriptor.95 %in% c("overlaps S pole", "overlaps N pole", "overlaps equator"), NA, 
                                         (abs(demo.pt@coords[2])-min(speciesrange_i_absyrange.95))/(max(speciesrange_i_absyrange.95)-min(speciesrange_i_absyrange.95))) 
     rangeposition.quantile.eqsp.95  <- ifelse(cat.descriptor.95 == "overlaps equator" & demo.pt@coords[2]>=0, #if a species overlaps the equator, and the demo point is on equator/ in N hemisphere
@@ -489,7 +545,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
       rangeposition.quantile.95 <-rangeposition.quantile.eqsp.95 <-cat.descriptor.eqsp.95 <- cat.descriptor.95 <-   NA }
     if(speciesrange_i_yrange.95[1]<0 & speciesrange_i_yrange.95[2]<0  & demo.pt@coords[2]>0){ 
       rangeposition.quantile.95 <-rangeposition.quantile.eqsp.95 <-cat.descriptor.eqsp.95 <- cat.descriptor.95 <-   NA }
-    
+    }
     # finally, for alpha shape
     if (MCP.range== "N") {
       rangeposition.quantile.alphahull <- ifelse(cat.descriptor.alphahull %in% c("overlaps S pole", "overlaps N pole", "overlaps equator"), NA, 
@@ -512,7 +568,7 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     # getting categorical position in niche ----- 
     
     # get the PCA score for the demographic point in question
-    demo.pt.temp.precip <- extract(r, demo.pt) 
+    demo.pt.temp.precip <- raster::extract(r, demo.pt) 
     if (length(which(is.na(demo.pt.temp.precip)))>0){stop("the bioclim raster is returning NA for the demo pt; is it in the ocean??!! ")}  
     centeredNewData <-apply(demo.pt.temp.precip, MARGIN=1, FUN=c.fun, res$center, res$scale  ) # using PCA on the whole world
     demo_pca_i <-t(t(res$rotation) %*% centeredNewData)[,1:2]
@@ -530,14 +586,15 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     if (demopca.pt@coords[1] < xrange.lowerquantile) {cat.pca.descriptor  <- "low.PCA1.score"}
     if (demopca.pt@coords[1] > xrange.upperquantile) {cat.pca.descriptor <- "high.PCA1.score"}
     if (demopca.pt@coords[1] <= xrange.upperquantile & demopca.pt@coords[1] >= xrange.lowerquantile) {
-      if (demopca.pt@coords[2] < yrange.lowerquantile) {cat.pca.descriptor <-  "extreme.PCA2.score"} else
-        if (demopca.pt@coords[2] > yrange.upperquantile) {cat.pca.descriptor <- "extreme.PCA2.score"} else
-          if (demopca.pt@coords[2] <= yrange.upperquantile & demopca.pt@coords[2] >= yrange.lowerquantile) {cat.pca.descriptor <-  "central.PCA.score"} else
-          {cat.pca.descriptor <- NA}
+      if (demopca.pt@coords[2] < yrange.lowerquantile) {cat.pca.descriptor <-  "extreme.PCA2.score"} else if (
+        demopca.pt@coords[2] > yrange.upperquantile) {cat.pca.descriptor <- "extreme.PCA2.score"} else if (
+          demopca.pt@coords[2] <= yrange.upperquantile & demopca.pt@coords[2] >= yrange.lowerquantile) {cat.pca.descriptor <-  "central.PCA.score"} else {
+          cat.pca.descriptor <- NA}
       
     }
     
     # getting categorical position in niche for 95% hull
+    if (length(speciespoints_i) >= 5){
     yrange.lowerquantile.95 <- min(speciespcarange_i_yrange.95)+ (max(speciespcarange_i_yrange.95)- min(speciespcarange_i_yrange.95))*cat.quantile # this is pca 2
     yrange.upperquantile.95 <- min(speciespcarange_i_yrange.95)+ (max(speciespcarange_i_yrange.95)- min(speciespcarange_i_yrange.95))*(1-cat.quantile)
     xrange.lowerquantile.95 <- min(speciespcarange_i_xrange.95)+ (max(speciespcarange_i_xrange.95)- min(speciespcarange_i_xrange.95))*cat.quantile # this is pca 1
@@ -546,11 +603,11 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
     if (demopca.pt@coords[1] < xrange.lowerquantile.95) {cat.pca.descriptor.95 <- "low.PCA1.score"}
     if (demopca.pt@coords[1] > xrange.upperquantile.95) {cat.pca.descriptor.95 <- "high.PCA1.score"}
     if (demopca.pt@coords[1] <= xrange.upperquantile.95 & demopca.pt@coords[1] >= xrange.lowerquantile.95) {
-      if (demopca.pt@coords[2] < yrange.lowerquantile.95) {cat.pca.descriptor.95<- "extreme.PCA2.score"} else
-        if (demopca.pt@coords[2] > yrange.upperquantile.95) {cat.pca.descriptor.95<- "extreme.PCA2.score"} else
-          if (demopca.pt@coords[2] <= yrange.upperquantile.95 & demopca.pt@coords[2] >= yrange.lowerquantile.95) {
+      if (demopca.pt@coords[2] < yrange.lowerquantile.95) {cat.pca.descriptor.95<- "extreme.PCA2.score"} else if (
+        demopca.pt@coords[2] > yrange.upperquantile.95) {cat.pca.descriptor.95<- "extreme.PCA2.score"} else if (
+          demopca.pt@coords[2] <= yrange.upperquantile.95 & demopca.pt@coords[2] >= yrange.lowerquantile.95) {
             cat.pca.descriptor.95 <- "central.PCA.score"} else {
-              cat.pca.descriptor.95<- NA} }
+              cat.pca.descriptor.95<- NA} }}
     
     # getting categorical position in niche for alpha shape  
     if (MCP.niche== "N"){
@@ -562,22 +619,22 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
       if (demopca.pt@coords[1] < xrange.lowerquantile.alphahull) {cat.pca.descriptor.alphahull  <- "low.PCA1.score"}
       if (demopca.pt@coords[1] > xrange.upperquantile.alphahull) {cat.pca.descriptor.alphahull <- "high.PCA1.score"}
       if (demopca.pt@coords[1] <= xrange.upperquantile.alphahull & demopca.pt@coords[1] >= xrange.lowerquantile.alphahull) {
-        if (demopca.pt@coords[2] < yrange.lowerquantile.alphahull) {cat.pca.descriptor.alphahull <-  "extreme.PCA2.score"} else
-          if (demopca.pt@coords[2] > yrange.upperquantile.alphahull) {cat.pca.descriptor.alphahull <- "extreme.PCA2.score"} else
-            if (demopca.pt@coords[2] <= yrange.upperquantile.alphahull & demopca.pt@coords[2] >= yrange.lowerquantile.alphahull) {
+        if (demopca.pt@coords[2] < yrange.lowerquantile.alphahull) {cat.pca.descriptor.alphahull <-  "extreme.PCA2.score"} else if (
+          demopca.pt@coords[2] > yrange.upperquantile.alphahull) {cat.pca.descriptor.alphahull <- "extreme.PCA2.score"} else if (
+            demopca.pt@coords[2] <= yrange.upperquantile.alphahull & demopca.pt@coords[2] >= yrange.lowerquantile.alphahull) {
               cat.pca.descriptor.alphahull <-  "central.PCA.score"} else {
                 cat.pca.descriptor.alphahull <- NA}
         
-      }} else  cat.pca.descriptor.alphahull <- cat.pca.descriptor
+      }} else  {cat.pca.descriptor.alphahull <- cat.pca.descriptor}
     
     
     
     # continuous position in niche----
     
     rangepcaposition.quantile <- (demopca.pt@coords[1]- min(speciespcarange_i_xrange))/ (max(speciespcarange_i_xrange)- min(speciespcarange_i_xrange))
-    rangepcaposition.quantile.95 <- (demopca.pt@coords[1]- min(speciespcarange_i_xrange.95))/ (max(speciespcarange_i_xrange.95)- min(speciespcarange_i_xrange.95))
+    if (length(speciespoints_i) >= 5){rangepcaposition.quantile.95 <- (demopca.pt@coords[1]- min(speciespcarange_i_xrange.95))/ (max(speciespcarange_i_xrange.95)- min(speciespcarange_i_xrange.95))}
     if (MCP.niche == "N") {rangepcaposition.quantile.alphahull <- (demopca.pt@coords[1]- min(speciespcarange_i_xrange.alphahull))/ (max(speciespcarange_i_xrange.alphahull)- min(speciespcarange_i_xrange.alphahull))
-    } else rangepcaposition.quantile.alphahull <- rangepcaposition.quantile
+    } else {rangepcaposition.quantile.alphahull <- rangepcaposition.quantile}
     
     # fixing variables if you cannot fit an alpha shape---
     if (MCP.range == "Y") { # some of these in the below are repeated from the code above
@@ -588,9 +645,12 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
       rangeposition.quantile.eqsp.alphahull <- rangeposition.quantile.eqsp}
     
     if (MCP.niche == "Y") { # some of these in the below are repeated from the code above
-      rangearea.pca.alphahull <- rangepcaarea
+      rangepcaarea.alphahull <- rangepcaarea
       cat.pca.descriptor.alphahull <- cat.pca.descriptor
       rangepcaposition.quantile.alphahull <- rangepcaposition.quantile}
+    if (length(speciespoints_i) < 5){rangearea.95 <- rangepcaarea.95 <- cat.descriptor.95 <- 
+      cat.descriptor.eqsp.95 <- rangeposition.quantile.95 <- rangeposition.quantile.eqsp.95<- cat.pca.descriptor.95 <- 
+      rangepcaposition.quantile.95 <- NA}
     
     results[ii,] <- c(rangearea, 
                       rangepcaarea, 
@@ -639,14 +699,15 @@ for (i in i:length(unique(species_sites$species))){ # cycling through all the un
        rangepcaposition.quantile.alphahull)
     
     
-    species_sites_positions[species.indices,which(names(species_sites_positions)== "rangearea"): length(names(data))] <- results
+    
     
   } # end of ii loop
+  species_sites_positions[species.indices,which(names(species_sites_positions)== "rangearea"): length(names(species_sites_positions))] <- results
   # get rid of most things in order to speed up the loop
-  gdata::keep(alpharange, alphaniche, species_sites_positions, 
+  gdata::keep(alpharange, alphaniche, species_sites_positions, species_sites,
               i, m1, extract_coords1, S.pole.pt, N.pole.pt, 
               c.fun, r, res, terrestrial_sf, cat.quantile, sure= TRUE)    
   print(i)}
 
-unique(data$cat.descriptor) # should be, um, more than just NA's
+unique(species_sites_positions$cat.descriptor) # should be, um, more than just NA's
 save.image(file= paste("data/02_positions.", format(Sys.Date(), format="%y%m%d"), ".cat.quantile",cat.quantile,".RData", sep= "" ))
