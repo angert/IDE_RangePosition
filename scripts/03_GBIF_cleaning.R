@@ -43,7 +43,7 @@ good_species <- # good species is a vector that tells you which species are ok t
     good_species_i <- TRUE
   
   # download GBIF data from the GBIF website
-  d <- rgbif::occ_download_get(key = downloadkeys[i], path= "data/raw_occurence", overwrite=FALSE) %>%
+  d <- rgbif::occ_download_get(key = downloadkeys[i], path= ".", overwrite=FALSE) %>%
     rgbif::occ_download_import()
 
 
